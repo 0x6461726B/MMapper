@@ -1,0 +1,7 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="MMapper/MMapper.vcxproj" Id="f5ae7853-fab8-41fa-b823-dc56b84f531e" />
+</Solution>
