@@ -2,6 +2,7 @@
 #include "stub.h"
 #include <TlHelp32.h>
 
+
 DWORD GetProcessIdByName(const wchar_t* name)
 {
     auto snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
@@ -114,9 +115,11 @@ bool InjectDll(DWORD pid, const char* dllPath)
     mapData.imageBase = (uint8_t*)remoteBase;
     mapData.fnLoadLibraryA = LoadLibraryA;
     mapData.fnGetProcAddress = GetProcAddress;
+    mapData.fnRtlAddFunctionTable = RtlAddFunctionTable;
+    mapData.fnVirtualProtectEx = VirtualProtectEx;
     mapData.success = false;
 
-    size_t stubSize = 0x1000;
+    size_t stubSize = 0x5000;//(uintptr_t)StubEnd - (uintptr_t)LoaderStub;
 
     auto total = stubSize + sizeof(ManualMapData);
     void* stubRemote = VirtualAllocEx(hProc, 0, total, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
@@ -133,16 +136,16 @@ bool InjectDll(DWORD pid, const char* dllPath)
     ReadProcessMemory(hProc, dataRemote, &mapData, sizeof(mapData), nullptr);
     auto result = mapData.success;
     if (result) {
-        printf("Successfully injected the stub.\n");
+        printf("Successfully injected the stub. 0x%lx\n", result);
     }
     else {
-        printf("Failed its not success.\n");
+        printf("Failed its not success. 0x%lx\n", result);
     }
 
 
+    VirtualFreeEx(hProc, stubRemote, 0, MEM_RELEASE);
     CloseHandle(hThread);
     CloseHandle(hProc);
-    VirtualFreeEx(hProc, stubRemote, 0, MEM_RELEASE);
     VirtualFree(dll, 0, MEM_RELEASE);
    
 
@@ -152,11 +155,15 @@ bool InjectDll(DWORD pid, const char* dllPath)
 
 int main(int argc, char* argv[])
 {
-     const char* dllPath = "C:\\Users\\dark\\source\\repos\\MMapper\\x64\\Debug\\test_dll.dll";
+     const char* dllPath = "C:\\Users\\dark\\source\\repos\\dummyDLL\\x64\\release\\dummyDLL.dll";
      const wchar_t* targetProcess = L"Mini-AC.exe";
     
      DWORD pid = GetProcessIdByName(targetProcess);
-     if (!pid) { printf("Process not found\n"); return 1; }
+     if (!pid) {
+         printf("Process not found\n");
+         system("pause");
+         return 1;
+     }
     
      if (InjectDll(pid, dllPath))
          printf("Injection succeeded!\n");
