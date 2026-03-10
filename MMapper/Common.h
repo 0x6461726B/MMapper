@@ -12,6 +12,6 @@ struct ManualMapData
     decltype(&LoadLibraryA)    fnLoadLibraryA;
     decltype(&GetProcAddress)  fnGetProcAddress;
     decltype(&RtlAddFunctionTable) fnRtlAddFunctionTable;
-    decltype(&VirtualProtectEx) fnVirtualProtectEx;
+    decltype(&VirtualProtectEx) fnVirtualProtectEx; //virtualprotect resolved to 0x0 but Ex works 
     BOOL success;  
 };
