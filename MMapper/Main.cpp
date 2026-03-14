@@ -1,24 +1,26 @@
+#include <iostream>
+#include <string>
 #include "common.h"
 #include "stub.h"
 #include <TlHelp32.h>
 
 
-DWORD GetProcessIdByName(const wchar_t* name)
+DWORD GetProcessIdByName(const char* name)
 {
     auto snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
 
     if (snap == INVALID_HANDLE_VALUE) return 0;
 
-    PROCESSENTRY32W pe = { sizeof(pe) };
+    PROCESSENTRY32 pe = { sizeof(pe) };
 
-    Process32FirstW(snap, &pe);
+    Process32First(snap, &pe);
 
     do {
-        if (_wcsicmp(pe.szExeFile, name) == 0) {
+        if (_strcmpi(pe.szExeFile, name) == 0) {
             CloseHandle(snap);
             return pe.th32ProcessID;
         }
-    } while (Process32NextW(snap, &pe));
+    } while (Process32Next(snap, &pe));
 
     CloseHandle(snap);
     return 0;
@@ -117,7 +119,7 @@ bool InjectDll(DWORD pid, const char* dllPath)
     mapData.fnGetProcAddress = GetProcAddress;
     mapData.fnRtlAddFunctionTable = RtlAddFunctionTable;
     mapData.fnVirtualProtectEx = VirtualProtectEx;
-    mapData.success = false;
+    mapData.errorCode = SUCCESS;
 
     size_t stubSize = 0x5000;//(uintptr_t)StubEnd - (uintptr_t)LoaderStub;
 
@@ -134,12 +136,16 @@ bool InjectDll(DWORD pid, const char* dllPath)
     WaitForSingleObject(hThread, INFINITE);
 
     ReadProcessMemory(hProc, dataRemote, &mapData, sizeof(mapData), nullptr);
-    auto result = mapData.success;
-    if (result) {
+    auto result = mapData.errorCode;
+    if (result == SUCCESS) {
         printf("Successfully injected the stub. 0x%lx\n", result);
     }
     else {
-        printf("Failed its not success. 0x%lx\n", result);
+        printf("Injection failed, error code: 0x%lx\n", result);
+        if (result == LOAD_LIBRARY_FAILED) {
+            printf("Missing Dependency: %s\n", mapData.errorData);
+        }
+        return false;
     }
 
 
@@ -155,17 +161,24 @@ bool InjectDll(DWORD pid, const char* dllPath)
 
 int main(int argc, char* argv[])
 {
-     const char* dllPath = "C:\\Users\\dark\\source\\repos\\dummyDLL\\x64\\release\\dummyDLL.dll";
-     const wchar_t* targetProcess = L"Mini-AC.exe";
+     std::string dllPath;
+     std::string targetProcess;
     
-     DWORD pid = GetProcessIdByName(targetProcess);
+     printf("Enter the DLL path: ");
+     std::getline(std::cin, dllPath);
+     dllPath.erase(std::remove(dllPath.begin(), dllPath.end(), '\"'), dllPath.end()); //make sure "//path//etc" work by removing the quotes
+     printf("Enter the target process: ");
+     std::getline(std::cin, targetProcess);
+
+
+     DWORD pid = GetProcessIdByName(targetProcess.c_str());
      if (!pid) {
          printf("Process not found\n");
          system("pause");
          return 1;
      }
     
-     if (InjectDll(pid, dllPath))
+     if (InjectDll(pid, dllPath.c_str()))
          printf("Injection succeeded!\n");
      else
          printf("Injection failed.\n");

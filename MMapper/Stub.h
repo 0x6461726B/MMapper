@@ -14,8 +14,14 @@ void __stdcall LoaderStub(ManualMapData* pData)
     auto fnVirtualProtectEx = pData->fnVirtualProtectEx;
 
     auto dosHeader = (IMAGE_DOS_HEADER*)base;
-    auto ntHeader = (IMAGE_NT_HEADERS*)(base + dosHeader->e_lfanew);
 
+    if (dosHeader->e_magic != IMAGE_DOS_SIGNATURE) {
+        pData->errorCode = INVALID_PE;
+        return;
+    }
+
+
+    auto ntHeader = (IMAGE_NT_HEADERS*)(base + dosHeader->e_lfanew);
     auto optHeader = &ntHeader->OptionalHeader;
 
 
@@ -69,26 +75,35 @@ void __stdcall LoaderStub(ManualMapData* pData)
             auto dllName = (char*)(base + currentEntry->Name);
             auto hMod = fnLoadLibraryA(dllName);
 
-            if (hMod) {
-                auto originalFirstThunk = (IMAGE_THUNK_DATA*)(base + currentEntry->OriginalFirstThunk);
-                auto firstThunk = (IMAGE_THUNK_DATA*)(base + currentEntry->FirstThunk);
+            if (!hMod) {
+                pData->errorCode = LOAD_LIBRARY_FAILED;
+                for (int j = 0; j < 127 && dllName[j]; j++) pData->errorData[j] = dllName[j];
+                return;
+            }
 
-                while (originalFirstThunk->u1.AddressOfData) {
 
-                    if (originalFirstThunk->u1.Ordinal & IMAGE_ORDINAL_FLAG) {
-                        firstThunk->u1.Function = (ULONGLONG)fnGetProcAddress(hMod, (LPCSTR)(originalFirstThunk->u1.Ordinal & 0xFFFF));
-                    }
-                    else {
-                        auto importByName = (IMAGE_IMPORT_BY_NAME*)(base + originalFirstThunk->u1.AddressOfData);
-                        firstThunk->u1.Function = (ULONGLONG)fnGetProcAddress(hMod, importByName->Name);
-                    }
+            auto originalFirstThunk = (IMAGE_THUNK_DATA*)(base + currentEntry->OriginalFirstThunk);
+            auto firstThunk = (IMAGE_THUNK_DATA*)(base + currentEntry->FirstThunk);
 
-                    originalFirstThunk++;
-                    firstThunk++;
+            while (originalFirstThunk->u1.AddressOfData) {
+
+                if (originalFirstThunk->u1.Ordinal & IMAGE_ORDINAL_FLAG) {
+                    firstThunk->u1.Function = (ULONGLONG)fnGetProcAddress(hMod, (LPCSTR)(originalFirstThunk->u1.Ordinal & 0xFFFF));
+                }
+                else {
+                    auto importByName = (IMAGE_IMPORT_BY_NAME*)(base + originalFirstThunk->u1.AddressOfData);
+                    firstThunk->u1.Function = (ULONGLONG)fnGetProcAddress(hMod, importByName->Name);
                 }
 
+                if (!firstThunk->u1.Function) {
+                    pData->errorCode = GET_PROC_ADDRESS_FAILED;
+                    return;
+                }
 
+                originalFirstThunk++;
+                firstThunk++;
             }
+
             currentEntry++;
         }
     }
@@ -148,7 +163,10 @@ void __stdcall LoaderStub(ManualMapData* pData)
         else                             protect = PAGE_NOACCESS;
 
 
-        fnVirtualProtectEx((HANDLE)-1, base + sections[i].VirtualAddress, sections[i].Misc.VirtualSize, protect, &oldProtect);
+        if (!fnVirtualProtectEx((HANDLE)-1, base + sections[i].VirtualAddress, sections[i].Misc.VirtualSize, protect, &oldProtect)) {
+            pData->errorCode = VIRTUAL_PROTECT_FAILED;
+            return;
+        }
 
     }
 
@@ -162,8 +180,8 @@ void __stdcall LoaderStub(ManualMapData* pData)
 
 
 
-    pData->success = 1;
+    pData->errorCode = SUCCESS;
 
 }
 
-void __stdcall StubEnd() {}
+void __stdcall StubEnd() {} //TODO: fix it this so i can use LoaderStub - StubEnd instead of fixed size
