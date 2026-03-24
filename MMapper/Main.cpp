@@ -119,9 +119,9 @@ bool InjectDll(DWORD pid, const char* dllPath)
     mapData.fnGetProcAddress = GetProcAddress;
     mapData.fnRtlAddFunctionTable = RtlAddFunctionTable;
     mapData.fnVirtualProtectEx = VirtualProtectEx;
-    mapData.errorCode = SUCCESS;
+    mapData.errorCode = DEFAULT;
 
-    size_t stubSize = 0x5000;//(uintptr_t)StubEnd - (uintptr_t)LoaderStub;
+    size_t stubSize = (uintptr_t)StubEnd - (uintptr_t)LoaderStub;
 
     auto total = stubSize + sizeof(ManualMapData);
     void* stubRemote = VirtualAllocEx(hProc, 0, total, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
@@ -166,7 +166,7 @@ int main(int argc, char* argv[])
     
      printf("Enter the DLL path: ");
      std::getline(std::cin, dllPath);
-     dllPath.erase(std::remove(dllPath.begin(), dllPath.end(), '\"'), dllPath.end()); //make sure "//path//etc" work by removing the quotes
+     dllPath.erase(std::remove(dllPath.begin(), dllPath.end(), '\"'), dllPath.end()); //make sure "/path/etc" work by removing the quotes
      printf("Enter the target process: ");
      std::getline(std::cin, targetProcess);
 
@@ -178,10 +178,7 @@ int main(int argc, char* argv[])
          return 1;
      }
     
-     if (InjectDll(pid, dllPath.c_str()))
-         printf("Injection succeeded!\n");
-     else
-         printf("Injection failed.\n");
+     InjectDll(pid, dllPath.c_str());
 
 
     system("pause");

@@ -5,6 +5,7 @@
 
 
 enum ErrorCode : DWORD {
+    DEFAULT = -1,
     SUCCESS = 0,
     INVALID_PARAMS = 1,
     INVALID_PE = 2,

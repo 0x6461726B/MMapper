@@ -13,10 +13,16 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Stub">
+      <UniqueIdentifier>{5a8bfa02-8b1e-4eff-ae2d-a87763d31849}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Stub.cpp">
+      <Filter>Stub</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -24,7 +30,7 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Stub.h">
-      <Filter>Header Files</Filter>
+      <Filter>Stub</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
