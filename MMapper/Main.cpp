@@ -99,8 +99,9 @@ bool InjectDll(DWORD pid, const char* dllPath)
     }
 
 
-    void* remoteBase = VirtualAllocEx(hProc, 0, ntHeader->OptionalHeader.SizeOfImage, MEM_RESERVE | MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+    void* remoteBase = VirtualAllocEx(hProc, 0, ntHeader->OptionalHeader.SizeOfImage, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 
+    printf("DLL allocated at 0x%llx\n", remoteBase);
 
     WriteProcessMemory(hProc, remoteBase, dll, ntHeader->OptionalHeader.SizeOfHeaders, nullptr);
 
@@ -130,7 +131,6 @@ bool InjectDll(DWORD pid, const char* dllPath)
     void* dataRemote = (uint8_t*)stubRemote + stubSize;
     WriteProcessMemory(hProc, dataRemote, &mapData, sizeof(mapData), nullptr);
 
-
     auto hThread = CreateRemoteThread(hProc, nullptr, 0, (LPTHREAD_START_ROUTINE)stubRemote, dataRemote, 0, nullptr);
 
     WaitForSingleObject(hThread, INFINITE);
@@ -155,7 +155,7 @@ bool InjectDll(DWORD pid, const char* dllPath)
     VirtualFree(dll, 0, MEM_RELEASE);
    
 
-    return result; 
+    return result == SUCCESS; 
 }
 
 
